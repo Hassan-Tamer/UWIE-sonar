@@ -36,10 +36,10 @@ class Shipwreck(Dataset):
         return torch.cat((rgb_tensor, gray_tensor), dim=0)
 
     def split_tensor(self,combined_tensor):
-        assert combined_tensor.shape[0] == 4, "Input tensor must have 4 channels."
+        assert combined_tensor.shape[1] == 4, "Input tensor must have 4 channels."
 
-        rgb_tensor = combined_tensor[:3, :, :]
-        gray_tensor = combined_tensor[3, :, :].unsqueeze(0)
+        rgb_tensor = combined_tensor[:,:3, :, :]
+        gray_tensor = combined_tensor[:,3, :, :].unsqueeze(0)
 
         return rgb_tensor, gray_tensor
 
@@ -63,6 +63,8 @@ class Shipwreck(Dataset):
 if __name__ == "__main__":
     dataset = Shipwreck(camera_dir='dataset/d1/camera',sonar_dir='dataset/d1/sonar')
     dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
-    for input_image in dataloader:
-        print(input_image.shape)    
+    # for input_image in dataloader:
+    #     print(input_image.shape)    
+
+    print(len(dataset))
     

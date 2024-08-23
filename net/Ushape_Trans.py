@@ -184,17 +184,12 @@ class Generator(nn.Module):
 		return x
 
 	def forward(self, x):
-		print(f"input shape: {x.shape}")
-
 		output=[]
 
 		x_1=self.Maxpool(x)
 		x_2=self.Maxpool(x_1)
 		x_3=self.Maxpool(x_2)
-
-		print(f"x_3 shape: {x_3.shape}")
 		e1 = self.Conv1(x)
-		print(e1.shape)
 		e1 = self.Conv1_1(e1)
 		e2 = self.Maxpool1(e1)
 		#32*128*128
