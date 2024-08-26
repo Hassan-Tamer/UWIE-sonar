@@ -1,43 +1,73 @@
-import torch
+import torchvision.models as models
 import torch.nn as nn
 import torch.nn.functional as F
 
-class Encoder(nn.Module):
+class ResizeSonar(nn.Module):
     def __init__(self):
-        super(Encoder, self).__init__()
-        self.conv1 = nn.Conv2d(4, 64, kernel_size=3, stride=2, padding=1)  # [B, 3, H, W] -> [B, 64, H/2, W/2]
-        self.conv2 = nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1)  # [B, 64, H/2, W/2] -> [B, 128, H/4, W/4]
-        self.conv3 = nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1)  # [B, 128, H/4, W/4] -> [B, 256, H/8, W/8]
-    
+        super(ResizeSonar, self).__init__()
+        self.convlayer1 = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=2, stride=2, padding=0)
+        self.bn1 = nn.BatchNorm2d(1)
+        self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
+        self.dropout = nn.Dropout(0.1)
+        self.convlayer2 = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=31, stride=1, padding=0)
+        self.bn2 = nn.BatchNorm2d(1)
+
+
     def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
+        x = self.convlayer1(x)
+        x = self.bn1(x)
+        x = nn.functional.gelu(x)
+        x = self.maxpool(x)
+        x = self.dropout(x)
+
+        x = self.convlayer2(x)
+        x = self.bn2(x)
+        x = nn.functional.gelu(x)        
+        
+        return x
+    
+class SonarExtractor(nn.Module):
+    def __init__(self,sonar_base_model):
+        super(SonarExtractor, self).__init__()
+        self.base_model = sonar_base_model
+        self.resizeModel = ResizeSonar()
+
+    def forward(self,x):
+        x = self.resizeModel(x)
+        x = self.base_model(x)
         return x
 
-class Decoder(nn.Module):
-    def __init__(self):
-        super(Decoder, self).__init__()
-        self.deconv1 = nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1)  # [B, 256, H/8, W/8] -> [B, 128, H/4, W/4]
-        self.deconv2 = nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1)  # [B, 128, H/4, W/4] -> [B, 64, H/2, W/2]
-        self.deconv3 = nn.ConvTranspose2d(64, 3, kernel_size=3, stride=2, padding=1, output_padding=1)  # [B, 64, H/2, W/2] -> [B, 3, H, W]
-    
+class VGG19FeatureExtractor(nn.Module):
+    def __init__(self, output_dim):
+        super(VGG19FeatureExtractor, self).__init__()
+        vgg19 = models.vgg19(pretrained=True)
+        print(vgg19)
+        vgg19.features[0] = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1)
+        
+        
+        self.features = vgg19.features
+        
+        self.fc = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1, 1)),
+            nn.Flatten(),  
+            nn.Linear(512, output_dim)
+        )
+        
     def forward(self, x):
-        x = F.relu(self.deconv1(x))
-        x = F.relu(self.deconv2(x))
-        x = torch.sigmoid(self.deconv3(x))
+        x = self.features(x)
+        x = self.fc(x)
         return x
-
+    
 
 class modifiedGenerator(nn.Module):
     def __init__(self,original_generator):
         super(modifiedGenerator, self).__init__()
         self.model = original_generator
-        self.encoder = Encoder()
-        self.decoder = Decoder()
-        
+
+        self.conv1 = nn.Conv2d(in_channels=4, out_channels=3, kernel_size=3, stride=1, padding=1)
+
     def forward(self, x):
-        x = self.encoder(x)
-        x = self.decoder(x)
+        x = self.conv1(x)
+        x = F.relu(x)
         x = self.model(x)
         return x
