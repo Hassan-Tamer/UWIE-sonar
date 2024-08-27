@@ -60,7 +60,10 @@ class Generator(nn.Module):
 		out_ch=3,
 		conv_patch_representation=True,
 		positional_encoding_type="learned",
-		use_eql=True):
+		use_eql=True,
+		use_decoder_only=True,
+		use_encoder=True
+		):
 		super(Generator, self).__init__()
 		assert embedding_dim % num_heads == 0
 		assert img_dim % patch_dim == 0
@@ -170,6 +173,13 @@ class Generator(nn.Module):
 
 		self.Conv = nn.Conv2d(32, self.out_ch, kernel_size=1, stride=1, padding=0)
 
+		self.use_decoder_only = use_decoder_only
+		self.use_encoder = use_encoder
+
+		# if not self.use_decoder and not self.use_encoder:
+		# 	raise ValueError("Cannot encoder and decoder be False")
+			
+
 		# self.active = torch.nn.Sigmoid()
 		# 
 	def reshape_output(self,x): #将transformer的输出resize为原来的特征图尺寸
@@ -182,6 +192,9 @@ class Generator(nn.Module):
 		x = x.permute(0, 3, 1, 2).contiguous()
 
 		return x
+
+	def encoder(self,x):
+		pass
 
 	def forward(self, x):
 		output=[]
@@ -243,8 +256,9 @@ class Generator(nn.Module):
 		#residual是否要加bn和relu？
 		e5=e5+residual
 
-
-
+		if self.use_decoder_only:
+			return e5
+		
 		d5 = self.Up5(e5)
 		e4_att = self.coatt5(g=d5, x=e4)
 		d5 = torch.cat((e4_att, d5), dim=1)

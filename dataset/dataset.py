@@ -19,21 +19,29 @@ class Shipwreck(Dataset):
     def __getitem__(self, idx):
         sonar_path = self.sonar_paths[idx]
         cam_path = self.transform_filename(sonar_path).replace('sonar', 'camera')
-        img4channel = self.concat_images(cam_path,sonar_path)
-        return img4channel
+        # img4channel = self.concat_images(cam_path,sonar_path)
+        camTensor , sonarTensor = self.concat_images(cam_path,sonar_path) 
+        # return img4channel
+        return camTensor,sonarTensor
+    
     
     def concat_images(self,rgb_image_path, gray_image_path):
         rgb_image = Image.open(rgb_image_path).convert('RGB')
         gray_image = Image.open(gray_image_path).convert('L')
 
         rgb_image = rgb_image.resize((256, 256))
-        gray_image = gray_image.resize((256, 256))
+        gray_image = np.array(gray_image)
+        gray_image = gray_image[:,55:gray_image.shape[1]-55]
+        gray_image = Image.fromarray(gray_image)
+        gray_image = gray_image.resize((507,507))
+        # gray_image = gray_image.resize((256, 256))
 
         to_tensor = transforms.ToTensor()
         rgb_tensor = to_tensor(rgb_image) 
         gray_tensor = to_tensor(gray_image)  
 
-        return torch.cat((rgb_tensor, gray_tensor), dim=0)
+        return rgb_tensor, gray_tensor
+        # return torch.cat((rgb_tensor, gray_tensor), dim=0)
 
     def split_tensor(self,combined_tensor):
         assert combined_tensor.shape[1] == 4, "Input tensor must have 4 channels."
@@ -63,8 +71,10 @@ class Shipwreck(Dataset):
 if __name__ == "__main__":
     dataset = Shipwreck(camera_dir='dataset/d1/camera',sonar_dir='dataset/d1/sonar')
     dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
-    # for input_image in dataloader:
-    #     print(input_image.shape)    
+    for i,j in dataloader:
+        print(i.shape)    
+        print(j.shape)
+        break
 
     print(len(dataset))
     
