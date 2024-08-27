@@ -96,8 +96,8 @@ class Fusion(nn.Module):
         self.upsample = nn.Upsample(size=(256, 256), mode='bilinear', align_corners=False)
     
     def forward(self, x, y):
-        x = x.view(1,1,64,64)
-        y = y.view(1,1,64,64)
+        x = x.view(-1,1,64,64)
+        y = y.view(-1,1,64,64)
         z = torch.cat((x,y),1)  #[1, 2, 64, 64]
         z = self.maxpool(z)  #[1, 2, 32, 32]
         z = self.conv1(z) #[1, 128, 32, 32]

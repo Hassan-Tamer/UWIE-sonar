@@ -61,7 +61,7 @@ class Generator(nn.Module):
 		conv_patch_representation=True,
 		positional_encoding_type="learned",
 		use_eql=True,
-		use_decoder_only=True,
+		use_decoder_only=False,
 		use_encoder=True
 		):
 		super(Generator, self).__init__()
