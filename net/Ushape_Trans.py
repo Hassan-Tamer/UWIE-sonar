@@ -61,8 +61,7 @@ class Generator(nn.Module):
 		conv_patch_representation=True,
 		positional_encoding_type="learned",
 		use_eql=True,
-		use_decoder_only=False,
-		use_encoder=True
+		use_encoder_only=False,
 		):
 		super(Generator, self).__init__()
 		assert embedding_dim % num_heads == 0
@@ -173,8 +172,7 @@ class Generator(nn.Module):
 
 		self.Conv = nn.Conv2d(32, self.out_ch, kernel_size=1, stride=1, padding=0)
 
-		self.use_decoder_only = use_decoder_only
-		self.use_encoder = use_encoder
+		self.use_encoder_only = use_encoder_only
 
 		# if not self.use_decoder and not self.use_encoder:
 		# 	raise ValueError("Cannot encoder and decoder be False")
@@ -256,7 +254,7 @@ class Generator(nn.Module):
 		#residual是否要加bn和relu？
 		e5=e5+residual
 
-		if self.use_decoder_only:
+		if self.use_encoder_only:
 			return e5
 		
 		d5 = self.Up5(e5)
@@ -297,7 +295,7 @@ class Generator(nn.Module):
 
 		#out = self.Conv(d2)
 
-		#d1 = self.active(out)
+		# d1 = self.active(out)
 		#output=np.array(output)
 		
 		return output
