@@ -53,7 +53,7 @@ class ImageFeatureExtractor(nn.Module):
         self.base_model.use_encoder_only = True
         self.base_model.train()
         self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
-        self.conv1 = nn.Conv2d(in_channels=256, out_channels=64, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv1 = nn.Conv2d(in_channels=256, out_channels=64, kernel_size=3, stride=1, padding=1)
         self.flatten = nn.Flatten()
 
     def forward(self, x):
@@ -69,14 +69,14 @@ class Fusion(nn.Module):
     def __init__(self):
         super(Fusion, self).__init__()
         self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
-        self.conv1 = nn.Conv2d(in_channels=2, out_channels=128, kernel_size=3, stride=1, padding=1,bias=False)
+        self.conv1 = nn.Conv2d(in_channels=2, out_channels=128, kernel_size=3, stride=1, padding=1)
         self.bn1 = nn.BatchNorm2d(128)
-        self.conv2 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1, padding=1,bias=False)
+        self.conv2 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1, padding=1)
         self.bn2 = nn.BatchNorm2d(256)
 
-        self.convTranspose1 = nn.ConvTranspose2d(in_channels=256, out_channels=128, kernel_size=4, stride=2, padding=1,bias=False)
-        self.convTranspose2 = nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=4, stride=2, padding=1,bias=False)
-        self.convTranspose3 = nn.ConvTranspose2d(in_channels=64, out_channels=3, kernel_size=4, stride=2, padding=1,bias=False)
+        self.convTranspose1 = nn.ConvTranspose2d(in_channels=256, out_channels=128, kernel_size=4, stride=2, padding=1)
+        self.convTranspose2 = nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=4, stride=2, padding=1)
+        self.convTranspose3 = nn.ConvTranspose2d(in_channels=64, out_channels=3, kernel_size=4, stride=2, padding=1)
         self.upsample = nn.Upsample(size=(256, 256), mode='bilinear', align_corners=False)
     
     def forward(self, x, y):
@@ -103,10 +103,13 @@ class Fusion(nn.Module):
         return z
     
 class FinalModel(nn.Module):
-    def __init__(self):
+    def __init__(self,extractor='vgg'):
         super(FinalModel,self).__init__()
-        self.sonar_feature_extractor = ResnetFeatureExtractor()
-        # self.sonar_feature_extractor = VGG19FeatureExtractor()
+        if extractor == 'vgg':
+            self.sonar_feature_extractor = VGG19FeatureExtractor()
+        else:
+            self.sonar_feature_extractor = ResnetFeatureExtractor()
+
         original_generator = Generator()
         self.originalModelCopy = copy.deepcopy(original_generator)
         self.img_feature_extractor = ImageFeatureExtractor(self.originalModelCopy)
