@@ -2,7 +2,6 @@ import torchvision.models as models
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
-from net.Ushape_Trans import Generator
 import copy
 
 class VGG19FeatureExtractor(nn.Module):
@@ -53,27 +52,36 @@ class Fusion(nn.Module):
     # input 2 vectors [1,256,16,16]
     def __init__(self):
         super(Fusion, self).__init__()
-        self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
-        self.conv1 = nn.Conv2d(in_channels=2, out_channels=128, kernel_size=3, stride=1, padding=1)
-        self.bn1 = nn.BatchNorm2d(128)
-        self.conv2 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1, padding=1)
-        self.bn2 = nn.BatchNorm2d(256)
         self.swish = Swish()
-
-        self.convTranspose1 = nn.ConvTranspose2d(in_channels=512, out_channels=128, kernel_size=4, stride=2, padding=1)
-        self.convTranspose2 = nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=4, stride=2, padding=1)
-        self.convTranspose3 = nn.ConvTranspose2d(in_channels=64, out_channels=3, kernel_size=4, stride=2, padding=1)
-        self.upsample = nn.Upsample(size=(256, 256), mode='bilinear', align_corners=False)
-    
+        self.upsample1 = nn.Upsample(size=(32, 32), mode='bilinear', align_corners=False)
+        self.conv1 = nn.Conv2d(in_channels=512, out_channels=256, kernel_size=3, stride=1, padding=1)
+        self.bn1 = nn.BatchNorm2d(256)
+        self.upsample2 = nn.Upsample(size=(64, 64), mode='bilinear', align_corners=False)
+        self.conv2 = nn.Conv2d(in_channels=256, out_channels=128, kernel_size=3, stride=1, padding=1)
+        self.bn2 = nn.BatchNorm2d(128)
+        self.upsample3 = nn.Upsample(size=(128, 128), mode='bilinear', align_corners=False)
+        self.conv3 = nn.Conv2d(in_channels=128, out_channels=64, kernel_size=3, stride=1, padding=1)
+        self.bn3 = nn.BatchNorm2d(64)
+        self.upsample4 = nn.Upsample(size=(256, 256), mode='bilinear', align_corners=False)
+        self.conv4 = nn.Conv2d(in_channels=64, out_channels=3, kernel_size=3, stride=1, padding=1)
+        
     def forward(self, x, y):
         z = torch.cat((x,y),1)  #[1, 512, 16, 16]
-        z = self.convTranspose1(z)  # [1, 128, 32, 32]
+        z = self.upsample1(z)
+        z = self.conv1(z) #[1, 256, 32, 32]
+        z = self.bn1(z)
         z = self.swish(z)
-        z = self.convTranspose2(z)  # [1, 64, 64, 64]
+        z = self.upsample2(z)
+        z = self.conv2(z) #[1, 128, 64, 64]
+        z = self.bn2(z)
         z = self.swish(z)
-        z = self.convTranspose3(z)  # [1, 3, 128, 128]
+        z = self.upsample3(z)
+        z = self.conv3(z) #[1, 64, 128, 128]
+        z = self.bn3(z)
         z = self.swish(z)
-        z = self.upsample(z)        
+        z = self.upsample4(z)
+        z = self.conv4(z) #[1, 3, 256, 256]
+        z = self.swish(z)
         return z
     
     def generate_random_image(self):
@@ -97,3 +105,8 @@ class FinalModel(nn.Module):
     
     def generate_random_image(self):
         return torch.randn(1,3,256,256) , torch.randn(1,1,507,507), 
+
+if __name__ == "__main__":
+    f = Fusion()
+    x,y = f.generate_random_image()
+    f(x,y)
