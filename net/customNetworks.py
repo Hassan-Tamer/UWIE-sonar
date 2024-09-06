@@ -80,8 +80,13 @@ class Fusion(nn.Module):
         self.upsample = nn.Upsample(size=(256, 256), mode='bilinear', align_corners=False)
     
     def forward(self, x, y):
+        # avg pooling
+        # resnet
+        # langchain lava
+        # extract depth features from sonar
         x = x.view(-1,1,64,64)
         y = y.view(-1,1,64,64)
+        return x,y
         z = torch.cat((x,y),1)  #[1, 2, 64, 64]
         z = self.maxpool(z)  #[1, 2, 32, 32]
         z = self.conv1(z) #[1, 128, 32, 32]
@@ -105,10 +110,12 @@ class Fusion(nn.Module):
 class FinalModel(nn.Module):
     def __init__(self,extractor='vgg'):
         super(FinalModel,self).__init__()
-        if extractor == 'vgg':
-            self.sonar_feature_extractor = VGG19FeatureExtractor()
-        else:
-            self.sonar_feature_extractor = ResnetFeatureExtractor()
+        # if extractor == 'vgg':
+        #     print("Using VGG19 as feature extractor")
+        self.sonar_feature_extractor = VGG19FeatureExtractor()
+        # else:
+        #     print("Using Resnet50 as feature extractor")
+        #     self.sonar_feature_extractor = ResnetFeatureExtractor()
 
         original_generator = Generator()
         self.originalModelCopy = copy.deepcopy(original_generator)
