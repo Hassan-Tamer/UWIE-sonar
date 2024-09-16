@@ -5,13 +5,13 @@ from PIL import Image
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from Preprocess import pre_process
 
 class Shipwreck(Dataset):
-    def __init__(self, camera_dir,sonar_dir,transform=None):
-        # self.camera_dir = camera_dir
+    def __init__(self,sonar_dir,transform=None):
         self.transform = transform
-        # self.camera_paths = [os.path.join(camera_dir, fname) for fname in os.listdir(camera_dir)]
         self.sonar_paths = [os.path.join(sonar_dir, fname) for fname in os.listdir(sonar_dir)]
+        pp = pre_process()
 
     def __len__(self):
         return len(self.sonar_paths)
@@ -19,29 +19,23 @@ class Shipwreck(Dataset):
     def __getitem__(self, idx):
         sonar_path = self.sonar_paths[idx]
         cam_path = self.transform_filename(sonar_path).replace('sonar', 'camera')
-        # img4channel = self.concat_images(cam_path,sonar_path)
-        camTensor , sonarTensor = self.concat_images(cam_path,sonar_path) 
-        # return img4channel
+        sonarTensor = self.sonarPP(sonar_path)
+        camTensor = self.camPP(cam_path)
         return camTensor,sonarTensor
     
-    
-    def concat_images(self,rgb_image_path, gray_image_path):
+    def sonarPP(self,sonar_path):
+        pp = pre_process()
+        img = pp.totalPipeline(sonar_path)
+        to_tensor = transforms.ToTensor()
+        img_tensor = to_tensor(img)
+        return img_tensor
+
+    def camPP(self,rgb_image_path):
         rgb_image = Image.open(rgb_image_path).convert('RGB')
-        gray_image = Image.open(gray_image_path).convert('L')
-
         rgb_image = rgb_image.resize((256, 256))
-        gray_image = np.array(gray_image)
-        gray_image = gray_image[:,55:gray_image.shape[1]-55]
-        gray_image = Image.fromarray(gray_image)
-        gray_image = gray_image.resize((507,507))
-        # gray_image = gray_image.resize((256, 256))
-
         to_tensor = transforms.ToTensor()
         rgb_tensor = to_tensor(rgb_image) 
-        gray_tensor = to_tensor(gray_image)  
-
-        return rgb_tensor, gray_tensor
-        # return torch.cat((rgb_tensor, gray_tensor), dim=0)
+        return rgb_tensor
 
     def split_tensor(self,combined_tensor):
         assert combined_tensor.shape[1] == 4, "Input tensor must have 4 channels."
@@ -69,7 +63,7 @@ class Shipwreck(Dataset):
             raise ValueError("Filename format is not as expected (should start with 's' and contain 'c').")
 
 if __name__ == "__main__":
-    dataset = Shipwreck(camera_dir='dataset/d1/camera',sonar_dir='dataset/d1/sonar')
+    dataset = Shipwreck(sonar_dir='dataset/d1/sonar')
     dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
     for i,j in dataloader:
         print(i.shape)    
