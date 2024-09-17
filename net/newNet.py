@@ -44,6 +44,25 @@ class ImageFeatureExtractor(nn.Module):
     def generate_random_image(self):
         return torch.randn(1,3,256,256)
     
+class ImageFeatureExtractor2(nn.Module):
+    # input [1, 3, 256, 256]
+    def __init__(self):
+        super(ImageFeatureExtractor2, self).__init__()
+        vgg19 = models.vgg19(pretrained=True)
+        print(vgg19.features)
+        self.features = vgg19.features[0:35]
+        self.conv = nn.Conv2d(in_channels=512, out_channels=256, kernel_size=3, stride=1, padding=1,bias=False)
+
+        
+    def forward(self, x):
+        x = self.features(x)
+        x = self.conv(x)
+        return x
+    
+
+    def generate_random_image(self):
+        return torch.randn(1,3,256,256)
+
 class Swish(nn.Module):
     def forward(self, x):
         return x * torch.sigmoid(x)
@@ -107,12 +126,17 @@ class FinalModel(nn.Module):
         return torch.randn(1,3,256,256) , torch.randn(1,1,410,410), 
 
 if __name__ == "__main__":
-    v = VGG19FeatureExtractor()
-    img = v.generate_random_image()
-    print(v(img).shape)
+    # v = VGG19FeatureExtractor()
+    # img = v.generate_random_image()
+    # print(v(img).shape)
 
     # im = ImageFeatureExtractor(models.resnet18())
 
-    f = Fusion()
-    x,y = f.generate_random_image()
-    print(f(x,y).shape)
+    # f = Fusion()
+    # x,y = f.generate_random_image()
+    # print(f(x,y).shape)
+
+
+    # params = sum(p.numel() for p in Final.parameters() if p.requires_grad)
+    # print(params)
+    pass

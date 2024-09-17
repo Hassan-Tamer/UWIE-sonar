@@ -5,7 +5,7 @@ from PIL import Image
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from Preprocess import pre_process
+from dataset.Preprocess import pre_process
 
 class Shipwreck(Dataset):
     def __init__(self,sonar_dir,transform=None):
