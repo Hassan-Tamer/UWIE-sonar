@@ -66,15 +66,15 @@ class pre_process:
     def totalPipeline(self,img_path):
         img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
         img = self.remove_border(img)
-        img = self.remove_water_column(img)
-        img = self.mean_filter(img, 5)
-        img = self.edge_detection(img)
+        # img = self.remove_water_column(img)
+        # img = self.mean_filter(img, 5)
+        # img = self.edge_detection(img)
         img = cv2.resize(img, (410, 410))
         return img
 
 if __name__ == "__main__":
 
-    img1 = cv2.imread('1.jpg', cv2.IMREAD_GRAYSCALE)
+    img1 = cv2.imread('dataset/d1/sonar/1.jpg', cv2.IMREAD_GRAYSCALE)
     pp = pre_process()
     img = pp.remove_border(img1)
     img = pp.remove_water_column(img)

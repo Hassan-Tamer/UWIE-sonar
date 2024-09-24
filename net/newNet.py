@@ -6,7 +6,7 @@ import copy
 
 class VGG19FeatureExtractor(nn.Module):
     # input [1, 1, 410, 410]
-    def __init__(self, output_dim=4096):
+    def __init__(self):
         super(VGG19FeatureExtractor, self).__init__()
         vgg19 = models.vgg19(pretrained=True)
         vgg19.features[0] = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1)    
@@ -32,37 +32,18 @@ class ImageFeatureExtractor(nn.Module):
         super(ImageFeatureExtractor, self).__init__()
         self.base_model = image_base_model
         self.base_model.use_encoder_only = True
-        self.base_model.eval()
-        for param in self.base_model.parameters():
-            param.requires_grad = False
+        # self.base_model.eval()
+        # for param in self.base_model.parameters():
+        #     param.requires_grad = False
 
     def forward(self, x):
-        with torch.no_grad():
-            x = self.base_model(x)  #[1, 256, 16, 16]
+        # with torch.no_grad():
+        x = self.base_model(x)  #[1, 256, 16, 16]
         return x
     
     def generate_random_image(self):
         return torch.randn(1,3,256,256)
     
-class ImageFeatureExtractor2(nn.Module):
-    # input [1, 3, 256, 256]
-    def __init__(self):
-        super(ImageFeatureExtractor2, self).__init__()
-        vgg19 = models.vgg19(pretrained=True)
-        print(vgg19.features)
-        self.features = vgg19.features[0:35]
-        self.conv = nn.Conv2d(in_channels=512, out_channels=256, kernel_size=3, stride=1, padding=1,bias=False)
-
-        
-    def forward(self, x):
-        x = self.features(x)
-        x = self.conv(x)
-        return x
-    
-
-    def generate_random_image(self):
-        return torch.randn(1,3,256,256)
-
 class Swish(nn.Module):
     def forward(self, x):
         return x * torch.sigmoid(x)
@@ -105,7 +86,65 @@ class Fusion(nn.Module):
     
     def generate_random_image(self):
         return torch.randn(1,256,16,16), torch.randn(1,256,16,16)
+
+class Fusion_crossAttention(nn.Module):
+    def __init__(self):
+        super(Fusion_crossAttention, self).__init__()
+        self.fc1 = nn.Linear(256*16*16, 1024)
+        self.fc2 = nn.Linear(256*16*16, 1024)
+        self.flatten = nn.Flatten()
+        self.cross_attention = nn.MultiheadAttention(embed_dim=1024, num_heads=8)
     
+    def forward(self, sonar, cam):
+        sonar = self.flatten(sonar)
+        sonar = self.fc1(sonar)
+        cam = self.flatten(cam)
+        cam = self.fc2(cam)
+
+        cam = cam.unsqueeze(0)
+        sonar = sonar.unsqueeze(0)
+
+        query = cam
+        key_value = sonar
+
+        fused_embedding,_ = self.cross_attention(query=query, key=key_value, value=key_value)
+
+        return fused_embedding  # 1 1 1024
+    
+    def generate_random_image(self):
+        return torch.randn(1,256,16,16), torch.randn(1,256,16,16)
+
+class Decoder(nn.Module):
+    def __init__(self):
+        super(Decoder, self).__init__()
+        self.flatten = nn.Flatten()
+        self.deconv = nn.Sequential(
+            nn.ConvTranspose2d(4, 256, kernel_size=4, stride=2, padding=1),  # 4 16 16 -> 256 32 32
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1),  # 256 32 32 -> 128 64 64
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),  # 128 64 64 -> 64 128 128
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 3, kernel_size=4, stride=2, padding=1),  # 64 128 128 -> 3 256 256
+            nn.BatchNorm2d(3),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        x = self.flatten(x)
+        x = x.view(-1, 4, 16, 16)
+        x = self.deconv(x)
+        return x
+    
+    def generate_random_image(self):
+        return torch.randn(1,1,1024)
+    
+# de = Decoder()
+# print(de(torch.randn(3,1,1024)).shape)
+
     
 class FinalModel(nn.Module):
     def __init__(self,generator):
@@ -114,12 +153,15 @@ class FinalModel(nn.Module):
         original_generator = generator
         self.originalModelCopy = copy.deepcopy(original_generator)
         self.img_feature_extractor = ImageFeatureExtractor(self.originalModelCopy)
-        self.fusion = Fusion()
+        # self.fusion = Fusion()
+        self.fusion = Fusion_crossAttention()
+        self.decoder = Decoder()
 
-    def forward(self, cam, sonar):
+    def forward(self,sonar,cam):
         x = self.sonar_feature_extractor(sonar)
         y = self.img_feature_extractor(cam)
         z = self.fusion(x, y)
+        z = self.decoder(z)
         return z
     
     def generate_random_image(self):
